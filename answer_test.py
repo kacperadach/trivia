@@ -71,6 +71,10 @@ class TestStringMethods(unittest.TestCase):
         q = Question("", "Marine One")
         self.assertFalse(q.is_answer_correct("Airforce One"))
 
+    def test_can_spell_numbers(self):
+        q = Question("", "20")
+        self.assertTrue(q.is_answer_correct("twenty"))
+
 if __name__ == '__main__':
     unittest.main()
 

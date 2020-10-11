@@ -54,14 +54,17 @@ class Question:
         return self.answer
 
     def is_answer_correct(self, guess):
-        if len(self.answer) == 1 or self.answer.isnumeric():
+        if len(self.answer) == 1:
             return guess.lower() == self.answer
 
         if guess.isnumeric():
-            if guess.lower() == self.answer:
+            if guess.lower() == self.answer.lower():
                 return True
             guess = num2words(guess)
 
+        if self.answer.isnumeric():
+            if guess.lower() == num2words(self.answer).lower():
+                return True
 
         question = unidecode(self.question.lower())
         question = re.sub(r'[^A-Za-z0-9 ]+', '', question)
@@ -98,6 +101,9 @@ class Question:
         return correct_tokens > floor(len(answer_tokens) / 2)
 
     def _get_hint(self, percentage):
+        if len(self.answer) == 1:
+            return DISCORD_UNDERSCORE
+
         answer_length = len(re.sub(r'[^A-Za-z0-9]+', '', self.answer))
         num_visible_letter = floor(answer_length * percentage)
         if num_visible_letter == 0:

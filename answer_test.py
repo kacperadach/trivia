@@ -62,6 +62,11 @@ class TestStringMethods(unittest.TestCase):
         self.assertTrue(q.is_answer_correct("idpd"))
         self.assertFalse(q.is_answer_correct("idps"))
 
+    def test_accents_dont_matter(self):
+        q = Question("", "Adiós")
+        self.assertTrue(q.is_answer_correct("adios"))
+        self.assertTrue(q.is_answer_correct("adiós"))
+
 
 if __name__ == '__main__':
     unittest.main()

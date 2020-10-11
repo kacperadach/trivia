@@ -24,24 +24,6 @@ OPENT_URL = 'https://opentdb.com/api.php?amount=50&encode=url3986&type=multiple&
 DISCORD_UNDERSCORE = '\_'
 MAXMIMUM_DISTANCE = 2
 
-
-TEST_QUESTIONS = (
-    ('How many eyes does Kevin Fugate have?', 'One'),
-    ('What food did Tyler eat that was so big?', 'Hot dog'),
-    ('What was the name of the stripper Tom met in ATL?', 'Picante'),
-    ('What did Tan test when he worked in a lab?', 'Piss'),
-    ('What character did Alec make a big play with in LoL?', 'Amumu'),
-    ('What girl couldn\'t Jrn get it up for? (aka Dva Bomb)', 'Gabby'),
-    ('What prevented Tom from seeing the sky when he moved to Seattle?', 'Smoke'),
-    ('What is Kacper better known as on Skype?', 'Engineer Phillip'),
-    ('What drug was Andy Carlson addicted to?', 'Xanax'),
-    ('To whom did Andy once say: \"My life is so much better than yours\"?', 'Tyler'),
-    ('What did Tan once call Kacper in a fit of rage?', 'Insufferable Twat'),
-    ('What is Alec\'s favorite strain of kush?', 'White Widow'),
-    ('Under what piece of furniture could you find Tom\'s headset in high school?', 'Bed'),
-    ('What was Tom\'s best stock pick of all time?', 'SPHS')
-)
-
 # wrapper that will generate hints
 class Question:
 

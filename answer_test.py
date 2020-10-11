@@ -67,6 +67,9 @@ class TestStringMethods(unittest.TestCase):
         self.assertTrue(q.is_answer_correct("adios"))
         self.assertTrue(q.is_answer_correct("adiós"))
 
+    def test_bad_answer(self):
+        q = Question("", "Marine One")
+        self.assertFalse(q.is_answer_correct("Airforce One"))
 
 if __name__ == '__main__':
     unittest.main()

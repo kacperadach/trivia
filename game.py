@@ -1,8 +1,9 @@
-import threading
+from asyncio import Lock
 from datetime import datetime
 from random import randint
 
-from question import Question, Question_Database
+from lock import TimeoutLock
+from question import Question_Database
 
 
 class GameManager:
@@ -77,7 +78,7 @@ TWO_HINT_DELAY = 6
 class TriviaGame:
 
     def __init__(self, ctx, num_questions):
-        self.lock = threading.Lock()
+        self.lock = TimeoutLock()
         self.games_played = 0
         self.questions_manager = QuestionsManager(Question_Database.get_questions())
         self._reset(ctx, num_questions)

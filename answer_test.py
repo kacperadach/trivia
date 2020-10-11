@@ -75,6 +75,10 @@ class TestStringMethods(unittest.TestCase):
         q = Question("", "20")
         self.assertTrue(q.is_answer_correct("twenty"))
 
+    def test_number_answer(self):
+        q = Question("", "One, earth")
+        self.assertTrue(q.is_answer_correct("1 earth"))
+
 if __name__ == '__main__':
     unittest.main()
 

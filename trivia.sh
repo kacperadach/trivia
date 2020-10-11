@@ -1,3 +1,4 @@
 #!/bin/bash
 
-/root/trivia/trivia/trivia.py
+python3 /root/trivia/trivia/trivia.py
+

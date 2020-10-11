@@ -289,5 +289,5 @@ class QuestionDatabase:
         return questions
 
 
-Question_Database = QuestionDatabase(scrape=False)
+Question_Database = QuestionDatabase(scrape=True)
 

@@ -46,7 +46,7 @@ async def stop_game(ctx):
     guild = ctx.message.guild.name
     channel = ctx.message.channel.name
 
-    stopped = manager.stop_game(guild, channel)
+    stopped = await manager.stop_game(guild, channel)
     if stopped:
         await ctx.send('Stopped game')
 
@@ -55,7 +55,7 @@ async def ignore_question(ctx):
     guild = ctx.message.guild.name
     channel = ctx.message.channel.name
 
-    question = manager.ignore_question(guild, channel)
+    question = await manager.ignore_question(guild, channel)
     if question:
         await ctx.send(f'Ignored question: {question.get_question()}, answer: {question.get_answer()}')
 

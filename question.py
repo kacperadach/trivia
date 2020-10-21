@@ -10,8 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 from num2words import num2words
 from unidecode import unidecode
-
-from lock import TimeoutLock
+from asyncio import Lock
 
 STOP_WORDS = ['i', 'me', 'my', 'myself', 'we', 'our', 'ours', 'ourselves', 'you', "you're", "you've", "you'll", "you'd", 'your', 'yours', 'yourself', 'yourselves', 'he', 'him', 'his', 'himself', 'she', "she's", 'her', 'hers', 'herself', 'it', "it's", 'its', 'itself', 'they', 'them', 'their', 'theirs', 'themselves', 'what', 'which', 'who', 'whom', 'this', 'that', "that'll", 'these', 'those', 'am', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'having', 'do', 'does', 'did', 'doing', 'a', 'an', 'the', 'and', 'but', 'if', 'or', 'because', 'as', 'until', 'while', 'of', 'at', 'by', 'for', 'with', 'about', 'against', 'between', 'into', 'through', 'during', 'before', 'after', 'above', 'below', 'to', 'from', 'up', 'down', 'in', 'out', 'on', 'off', 'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why', 'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no', 'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 's', 't', 'can', 'will', 'just', 'don', "don't", 'should', "should've", 'now', 'd', 'll', 'm', 'o', 're', 've', 'y', 'ain', 'aren', "aren't", 'couldn', "couldn't", 'didn', "didn't", 'doesn', "doesn't", 'hadn', "hadn't", 'hasn', "hasn't", 'haven', "haven't", 'isn', "isn't", 'ma', 'mightn', "mightn't", 'mustn', "mustn't", 'needn', "needn't", 'shan', "shan't", 'shouldn', "shouldn't", 'wasn', "wasn't", 'weren', "weren't", 'won', "won't", 'wouldn', "wouldn't"]
 
@@ -168,11 +167,15 @@ def parse_answer(answer):
 class QuestionDatabase:
 
     def __init__(self, scrape=True):
-        self.lock = TimeoutLock()
+        self.lock = Lock()
         if scrape:
             self.questions = self._scrape_questions()
         else:
-            self.questions = self.read_question_database()
+            self.questions = []
+            try:
+                self.questions = self._read()
+            except Exception:
+                pass
 
     def get_questions(self):
         return self.questions
@@ -228,7 +231,11 @@ class QuestionDatabase:
 
     def _scrape_questions(self):
         all_questions = self._scrape_trivia_fyi() + self._scrape_opentdb()
-        old_questions = self.read_question_database()
+        old_questions = []
+        try:
+            old_questions = self._read()
+        except Exception:
+            pass
 
         old_question_map = {}
         for question in old_questions:
@@ -240,32 +247,25 @@ class QuestionDatabase:
             elif question.is_ignored():
                 all_questions[all_questions.index(question)].ignore_question()
 
-        self._update_question_database(all_questions)
+        self._write(all_questions)
         return all_questions
 
-    def _update_question_database(self, all_questions):
-        self.lock.acquire()
-        self._write(all_questions)
-        self.lock.release()
+    async def read_question_database(self):
+        async with self.lock:
+            questions = []
+            try:
+                questions = self._read()
+            except Exception as e:
+                pass
+            return questions
 
-    def read_question_database(self):
-        self.lock.acquire()
-        questions = []
-        try:
-            questions = self._read()
-        except Exception as e:
-            pass
-        self.lock.release()
-        return questions
-
-    def ignore_question(self, question):
-        self.lock.acquire()
-        all_questions = self._read()
-        index = all_questions.index(question)
-        if index >= 0:
-            all_questions[index].ignore_question()
-        self._write(all_questions)
-        self.lock.release()
+    async def ignore_question(self, question):
+        async with self.lock:
+            all_questions = self._read()
+            index = all_questions.index(question)
+            if index >= 0:
+                all_questions[index].ignore_question()
+            self._write(all_questions)
 
     def _write(self, all_questions):
         f = open('questions.pkl', 'wb')

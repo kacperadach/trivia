@@ -1,8 +1,7 @@
-from asyncio import Lock
 from datetime import datetime
 from random import randint
 
-from lock import TimeoutLock
+from asyncio import Lock
 from question import Question_Database
 
 
@@ -22,16 +21,16 @@ class GameManager:
         self.games[key] = TriviaGame(ctx, num_questions)
         return True
 
-    def stop_game(self, guild, channel):
+    async def stop_game(self, guild, channel):
         key = self._get_key(guild, channel)
         if key in self.games:
-            return self.games[key].stop()
+            return await self.games[key].stop()
         return False
 
-    def ignore_question(self, guild, channel):
+    async def ignore_question(self, guild, channel):
         key = self._get_key(guild, channel)
         if key in self.games:
-            return self.games[key].ignore()
+            return await self.games[key].ignore()
 
     async def process_message(self, message):
         guild = message.guild.name
@@ -78,7 +77,7 @@ TWO_HINT_DELAY = 6
 class TriviaGame:
 
     def __init__(self, ctx, num_questions):
-        self.lock = TimeoutLock()
+        self.lock = Lock()
         self.games_played = 0
         self.questions_manager = QuestionsManager(Question_Database.get_questions())
         self._reset(ctx, num_questions)
@@ -100,24 +99,22 @@ class TriviaGame:
             return True
         return False
 
-    def stop(self):
-        self.lock.acquire()
-        stopped = False
-        if self.state != GameState.OVER:
-            self.state = GameState.OVER
-            stopped = True
-        self.lock.release()
-        return stopped
+    async def stop(self):
+        async with self.lock:
+            stopped = False
+            if self.state != GameState.OVER:
+                self.state = GameState.OVER
+                stopped = True
+            return stopped
 
-    def ignore(self):
+    async def ignore(self):
         if self.question is None:
             return None
 
-        self.lock.acquire()
-        self.question.ignore_question()
-        Question_Database.ignore_question(self.question)
-        self.lock.release()
-        return self.question
+        async with self.lock:
+            self.question.ignore_question()
+            await Question_Database.ignore_question(self.question)
+            return self.question
 
 
     def _update_scoreboard(self, author_id, author_name):
@@ -162,17 +159,17 @@ class TriviaGame:
     async def process_answer(self, message):
         if self.state == GameState.BEFORE_QUESTION or self.state == GameState.OVER:
             return
-        self.lock.acquire()
-        author_id = message.author.id
-        author_name = message.author.name
-        content = message.content
+        async with self.lock:
+            if self.question_answered:
+                return
+            author_id = message.author.id
+            author_name = message.author.name
+            content = message.content
 
-        if self.question.is_answer_correct(content):
-            self.question_answered = True
-            self._update_scoreboard(author_id, author_name)
-            await self.ctx.send(f'Correct answer {author_name}! Answer: {self.question.get_answer()}')
-
-        self.lock.release()
+            if self.question.is_answer_correct(content):
+                self.question_answered = True
+                self._update_scoreboard(author_id, author_name)
+                await self.ctx.send(f'Correct answer {author_name}! Answer: {self.question.get_answer()}')
 
     async def advance_game(self):
         if self.state == GameState.OVER:
@@ -193,34 +190,30 @@ class TriviaGame:
 
         if self.state == GameState.BEFORE_QUESTION:
             if (datetime.now() - self.last_state).total_seconds() > DELAY_GAME_START_SECONDS:
-                self.lock.acquire()
-                self.question = self.questions_manager.next()
-                await self.ctx.send(f"Question {self.question_counter + 1}:\n{self.question.get_question()}")
-                self.state = GameState.AWAIT_ANSWER
-                self.last_state = datetime.now()
-                self.lock.release()
+                async with self.lock:
+                    self.question = self.questions_manager.next()
+                    await self.ctx.send(f"Question {self.question_counter + 1}:\n{self.question.get_question()}")
+                    self.state = GameState.AWAIT_ANSWER
+                    self.last_state = datetime.now()
         elif self.state == GameState.AWAIT_ANSWER:
             if (datetime.now() - self.last_state).total_seconds() > NO_HINT_DELAY:
-                self.lock.acquire()
-                if not self.question_answered:
-                    await self.ctx.send(f"Hint 1:\n{self.question.get_first_hint()}")
-                    self.state = GameState.AWAIT_ANSWER_HINT_ONE
-                    self.last_state = datetime.now()
-                self.lock.release()
+                async with self.lock:
+                    if not self.question_answered:
+                        await self.ctx.send(f"Hint 1:\n{self.question.get_first_hint()}")
+                        self.state = GameState.AWAIT_ANSWER_HINT_ONE
+                        self.last_state = datetime.now()
         elif self.state == GameState.AWAIT_ANSWER_HINT_ONE:
             if (datetime.now() - self.last_state).total_seconds() > ONE_HINT_DELAY:
-                self.lock.acquire()
-                if not self.question_answered:
-                    await self.ctx.send(f"Hint 2:\n{self.question.get_second_hint()}")
-                    self.state = GameState.AWAIT_ANSWER_HINT_TWO
-                    self.last_state = datetime.now()
-                self.lock.release()
+                async with self.lock:
+                    if not self.question_answered:
+                        await self.ctx.send(f"Hint 2:\n{self.question.get_second_hint()}")
+                        self.state = GameState.AWAIT_ANSWER_HINT_TWO
+                        self.last_state = datetime.now()
         elif self.state == GameState.AWAIT_ANSWER_HINT_TWO:
             if (datetime.now() - self.last_state).total_seconds() > TWO_HINT_DELAY:
-                self.lock.acquire()
-                if not self.question_answered:
-                    self.state = GameState.BEFORE_QUESTION
-                    self.last_state = datetime.now()
-                    await self.ctx.send(f"Answer:\n{self.question.get_answer()} {'' if self.question.get_details() is None else self.question.get_details()}")
-                    self.question_counter += 1
-                self.lock.release()
+                async with self.lock:
+                    if not self.question_answered:
+                        self.state = GameState.BEFORE_QUESTION
+                        self.last_state = datetime.now()
+                        await self.ctx.send(f"Answer:\n{self.question.get_answer()} {'' if self.question.get_details() is None else self.question.get_details()}")
+                        self.question_counter += 1
